@@ -12,7 +12,7 @@ type BloodPressureEntry = {
 };
 
 type FormDataState = {
-  section1: any;
+  section1: Record<string, string>;
   section2: Record<string, string>;
   section3: Record<string, string>;
   section4: {
@@ -134,7 +134,7 @@ export default function HypertensionSurvey() {
       const scriptURL = "https://script.google.com/macros/s/AKfycby1rU8FYvST49GUHrT6QGDr2lLoAo3QQEBDs-3iOsVHrnkh3pcIaPxzuthLy7KG8rcS/exec";
       const flatData: Record<string, string> = {};
 
-      const flattenObject = (obj: any, prefix = "") => {
+      const flattenObject = (obj: Record<string, any>, prefix = '') => {
         Object.entries(obj).forEach(([key, value]) => {
           const newKey = prefix ? `${prefix}_${key}` : key;
           if (typeof value === "object" && value !== null && !Array.isArray(value)) flattenObject(value, newKey);
