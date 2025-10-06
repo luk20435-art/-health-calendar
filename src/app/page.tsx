@@ -134,11 +134,14 @@ export default function HypertensionSurvey() {
       const scriptURL = "https://script.google.com/macros/s/AKfycby1rU8FYvST49GUHrT6QGDr2lLoAo3QQEBDs-3iOsVHrnkh3pcIaPxzuthLy7KG8rcS/exec";
       const flatData: Record<string, string> = {};
 
-      const flattenObject = (obj: Record<string, any>, prefix = '') => {
+      const flattenObject = (obj: Record<string, unknown>, prefix = '') => {
         Object.entries(obj).forEach(([key, value]) => {
           const newKey = prefix ? `${prefix}_${key}` : key;
-          if (typeof value === "object" && value !== null && !Array.isArray(value)) flattenObject(value, newKey);
-          else flatData[newKey] = String(value);
+          if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+            flattenObject(value as Record<string, unknown>, newKey);
+          } else {
+            flatData[newKey] = String(value);
+          }
         });
       };
 
@@ -157,8 +160,12 @@ export default function HypertensionSurvey() {
       if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
       const json = await res.json();
       setResult(json.success ? "✅ บันทึกข้อมูลเรียบร้อยแล้ว" : "❌ เกิดข้อผิดพลาดจาก Apps Script: " + (json.error || "ไม่ทราบข้อผิดพลาด"));
-    } catch (err: any) {
-      setResult("❌ การส่งข้อมูลล้มเหลว: " + err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setResult("❌ การส่งข้อมูลล้มเหลว: " + err.message);
+      } else {
+        setResult("❌ การส่งข้อมูลล้มเหลว: ไม่ทราบข้อผิดพลาด");
+      }
     } finally {
       setLoading(false);
     }
@@ -180,174 +187,109 @@ export default function HypertensionSurvey() {
           <p className="text-gray-600">กรุณากรอกข้อมูลให้ครบถ้วนและตรงตามความเป็นจริง</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* ส่วนที่ 1 */}
-          <div className="shadow-lg border-t-4 border-t-blue-500 bg-white rounded-lg p-6">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-t">
-              <div className="flex items-center gap-2 text-blue-900 font-semibold text-lg">
-                <User className="w-6 h-6" /> ส่วนที่ 1: ข้อมูลส่วนบุคคล
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Section 1: ข้อมูลส่วนตัว */}
+          <div className="p-6 bg-white rounded-xl shadow-md space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <User className="w-5 h-5 text-pink-500" /> ข้อมูลส่วนตัว
+            </h2>
+            {["fullName", "ageYears", "ageMonths", "gender", "weight", "height"].map((field) => (
+              <div key={field} className="flex flex-col">
+                <label className="font-medium text-gray-700">{field}</label>
+                <input
+                  type="text"
+                  value={formData.section1[field] || ""}
+                  onChange={(e) => handleChange("section1", field, e.target.value)}
+                  className="border rounded px-3 py-2"
+                />
               </div>
-            </div>
-            <div className="mt-4 grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">ชื่อ-สกุล</label>
-                <input type="text" value={formData.section1.fullName} onChange={(e) => handleChange("section1", "fullName", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" placeholder="กรอกชื่อ-สกุล" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">เพศ</label>
-                <div className="flex gap-6 mt-2">
-                  <label className="flex items-center gap-1">
-                    <input type="radio" value="ชาย" checked={formData.section1.gender === "ชาย"} onChange={() => handleChange("section1", "gender", "ชาย")} /> ชาย
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input type="radio" value="หญิง" checked={formData.section1.gender === "หญิง"} onChange={() => handleChange("section1", "gender", "หญิง")} /> หญิง
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">อายุ (ปี)</label>
-                <input type="number" value={formData.section1.ageYears} onChange={(e) => handleChange("section1", "ageYears", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" placeholder="0" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">อายุ (เดือน)</label>
-                <input type="number" value={formData.section1.ageMonths} onChange={(e) => handleChange("section1", "ageMonths", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" placeholder="0" />
-              </div>
-            </div>
-            <div className="mt-4 grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">น้ำหนัก (kg)</label>
-                <input type="number" value={formData.section1.weight} onChange={(e) => handleChange("section1", "weight", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" placeholder="0.0" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">ส่วนสูง (cm)</label>
-                <input type="number" value={formData.section1.height} onChange={(e) => handleChange("section1", "height", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" placeholder="0.0" />
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* ส่วนที่ 2: Motivation */}
-          <div className="shadow-lg border-t-4 border-t-green-500 bg-white rounded-lg p-6">
-            <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-t">
-              <div className="flex items-center gap-2 text-green-900 font-semibold text-lg">
-                <Activity className="w-6 h-6" /> ส่วนที่ 2: ทัศนคติ/แรงจูงใจ
+          {/* Section 2: Motivation Questions */}
+          <div className="p-6 bg-white rounded-xl shadow-md space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Activity className="w-5 h-5 text-pink-500" /> แบบสอบถามทัศนคติ
+            </h2>
+            {motivationQuestions.map((q, i) => (
+              <div key={i} className="flex flex-col">
+                <label>{q}</label>
+                <select
+                  value={formData.section2[`q${i}`] || ""}
+                  onChange={(e) => handleSection2Change(`q${i}`, e.target.value)}
+                  className="border rounded px-3 py-2"
+                >
+                  <option value="">เลือก</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                </select>
               </div>
-            </div>
-            <div className="mt-4 space-y-4">
-              {motivationQuestions.map((q, idx) => (
-                <fieldset key={idx} className="border p-3 rounded">
-                  <legend className="font-medium text-gray-700">{idx + 1}. {q}</legend>
-                  <div className="flex gap-4 mt-2">
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section2_${idx}`} value="0" checked={formData.section2[`q${idx}`] === "0"} onChange={() => handleSection2Change(`q${idx}`, "0")} /> 0
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section2_${idx}`} value="1" checked={formData.section2[`q${idx}`] === "1"} onChange={() => handleSection2Change(`q${idx}`, "1")} /> 1
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section2_${idx}`} value="2" checked={formData.section2[`q${idx}`] === "2"} onChange={() => handleSection2Change(`q${idx}`, "2")} /> 2
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section2_${idx}`} value="3" checked={formData.section2[`q${idx}`] === "3"} onChange={() => handleSection2Change(`q${idx}`, "3")} /> 3
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section2_${idx}`} value="4" checked={formData.section2[`q${idx}`] === "4"} onChange={() => handleSection2Change(`q${idx}`, "4")} /> 4
-                    </label>
-                  </div>
-                </fieldset>
-              ))}
-            </div>
+            ))}
           </div>
 
-          {/* ส่วนที่ 3: Behavior */}
-          <div className="shadow-lg border-t-4 border-t-yellow-500 bg-white rounded-lg p-6">
-            <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-3 rounded-t">
-              <div className="flex items-center gap-2 text-yellow-900 font-semibold text-lg">
-                <ClipboardList className="w-6 h-6" /> ส่วนที่ 3: พฤติกรรมสุขภาพ
+          {/* Section 3: Behavior Questions */}
+          <div className="p-6 bg-white rounded-xl shadow-md space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-pink-500" /> แบบสอบถามพฤติกรรม
+            </h2>
+            {behaviorQuestions.map((q, i) => (
+              <div key={i} className="flex flex-col">
+                <label>{q}</label>
+                <select
+                  value={formData.section3[`b${i}`] || ""}
+                  onChange={(e) => handleSection3Change(`b${i}`, e.target.value)}
+                  className="border rounded px-3 py-2"
+                >
+                  <option value="">เลือก</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                </select>
               </div>
-            </div>
-            <div className="mt-4 space-y-4">
-              {behaviorQuestions.map((q, idx) => (
-                <fieldset key={idx} className="border p-3 rounded">
-                  <legend className="font-medium text-gray-700">{idx + 1}. {q}</legend>
-                  <div className="flex gap-4 mt-2">
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section3_${idx}`} value="0" checked={formData.section3[`bq${idx}`] === "0"} onChange={() => handleSection3Change(`bq${idx}`, "0")} /> 0
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section3_${idx}`} value="1" checked={formData.section3[`bq${idx}`] === "1"} onChange={() => handleSection3Change(`bq${idx}`, "1")} /> 1
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section3_${idx}`} value="2" checked={formData.section3[`bq${idx}`] === "2"} onChange={() => handleSection3Change(`bq${idx}`, "2")} /> 2
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section3_${idx}`} value="3" checked={formData.section3[`bq${idx}`] === "3"} onChange={() => handleSection3Change(`bq${idx}`, "3")} /> 3
-                    </label>
-                    <label className="flex items-center gap-1">
-                      <input type="radio" name={`section3_${idx}`} value="4" checked={formData.section3[`bq${idx}`] === "4"} onChange={() => handleSection3Change(`bq${idx}`, "4")} /> 4
-                    </label>
-                  </div>
-                </fieldset>
-              ))}
-            </div>
+            ))}
           </div>
 
-          {/* ส่วนที่ 4: Blood Pressure */}
-          <div className="shadow-lg border-t-4 border-t-red-500 bg-white rounded-lg p-6">
-            <div className="bg-gradient-to-r from-red-50 to-red-100 p-3 rounded-t">
-              <div className="flex items-center gap-2 text-red-900 font-semibold text-lg">
-                <Calendar className="w-6 h-6" /> ส่วนที่ 4: ความดันโลหิต
-              </div>
-            </div>
-            <div className="mt-4 space-y-4">
-              {Object.entries(bpLabels).map(([key, label]) => (
-                <fieldset key={key} className="border p-3 rounded">
-                  <legend className="font-medium text-gray-700">{label}</legend>
-                  <div className="grid md:grid-cols-2 gap-4 mt-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">วันที่</label>
-                      <input type="date" value={formData.section4.bloodPressure[key].date} onChange={(e) => handleBloodPressureChange(key, "date", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">เวลา</label>
-                      <input type="time" value={formData.section4.bloodPressure[key].time} onChange={(e) => handleBloodPressureChange(key, "time", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">ความดันตัวบน</label>
-                      <input type="number" value={formData.section4.bloodPressure[key].systolic} onChange={(e) => handleBloodPressureChange(key, "systolic", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">ความดันตัวล่าง</label>
-                      <input type="number" value={formData.section4.bloodPressure[key].diastolic} onChange={(e) => handleBloodPressureChange(key, "diastolic", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">ชีพจร</label>
-                      <input type="number" value={formData.section4.bloodPressure[key].heartRate} onChange={(e) => handleBloodPressureChange(key, "heartRate", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">ผู้บันทึก</label>
-                      <input type="text" value={formData.section4.bloodPressure[key].recorder} onChange={(e) => handleBloodPressureChange(key, "recorder", e.target.value)} className="mt-1 block w-full border-gray-300 rounded px-2 py-1" />
-                    </div>
+          {/* Section 4: Blood Pressure */}
+          <div className="p-6 bg-white rounded-xl shadow-md space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-pink-500" /> ความดันโลหิต
+            </h2>
+            {Object.entries(formData.section4.bloodPressure).map(([period, bpData]) => (
+              <div key={period} className="p-4 border rounded space-y-2">
+                <h3 className="font-medium">{bpLabels[period as keyof typeof bpLabels]}</h3>
+                {Object.entries(bpData).map(([field, value]) => (
+                  <div key={field} className="flex flex-col">
+                    <label className="capitalize">{field}</label>
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={(e) => handleBloodPressureChange(period, field, e.target.value)}
+                      className="border rounded px-3 py-2"
+                    />
                   </div>
-                </fieldset>
-              ))}
-            </div>
+                ))}
+              </div>
+            ))}
           </div>
 
           {/* Submit */}
-          <div className="flex justify-center pt-4">
-            <button type="submit" disabled={loading} className="w-full md:w-auto px-12 py-3 text-lg font-semibold bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded shadow">
-              {loading ? "กำลังส่งข้อมูล..." : "ส่งข้อมูล"}
+          <div className="text-center">
+            <button
+              type="submit"
+              className="bg-pink-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-pink-600 disabled:opacity-50"
+              disabled={loading}
+            >
+              {loading ? "กำลังส่ง..." : "ส่งข้อมูล"}
             </button>
+            {result && <p className="mt-4">{result}</p>}
           </div>
         </form>
-
-        {result && (
-          <div className="mt-6 p-4 bg-white rounded-lg shadow-md text-center">
-            <p className="text-lg font-medium">{result}</p>
-          </div>
-        )}
       </div>
     </div>
   );
